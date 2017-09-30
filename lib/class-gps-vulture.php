@@ -1,10 +1,8 @@
 <?php
 /**
- * This is the Partial Station for Gravity Forms.
+ * This is GPS Vulture for Gravity Forms.
  *
- * It's not as good as a Total Station, but it should be good enough for lots of use cases.
- *
- * @package partial-station
+ * @package gps-vulture
  */
 
 if ( ! class_exists( 'GFForms' ) ) {
@@ -14,28 +12,65 @@ if ( ! class_exists( 'GFForms' ) ) {
 /**
  * This class provides a field for creating GPS traces in GF.
  */
-class Partial_Station_GPS_Trace extends GF_Field {
+class GPS_Vulture extends GF_Field {
 
 	/**
 	 * What kind of field is this?
 	 *
 	 * @var $type
 	 */
-	public $type = 'partial_station_gps_trace';
+	public $type = 'gps_vulture';
 
+	/**
+	 * Have our actions been run yet?
+	 */
+	public static $actions_run = false;
+
+	/**
+	 * Default field settings.
+	 */
+	public static $vulture_defaults = array(
+		'gps_vulture_gpsline' => 'checked',
+		'gps_vulture_minDistance' => 5,
+		'gps_vulture_minAccuracy' => 25,
+		'gps_vulture_polyline' => 'checked',
+		'gps_vulture_rectangle' => 'checked',
+		'gps_vulture_polygon' => 'checked',
+		'gps_vulture_circle' => 'checked',
+		'gps_vulture_marker' => 'checked',
+		'gps_vulture_circlemarker' => 'checked',
+	);
+
+	/**
+	 * Register this field type.
+	 */
 	public static function register() {
 		GF_Fields::register( new self());
 	}
 
+	/**
+	 * Start this up!
+	 *
+	 * @param array $data Not sure, we just pass it up to the parent field.
+	 */
 	public function __construct( $data = array() ) {
 		parent::__construct( $data );
+
+		if ( !self::$actions_run ) {
+			add_action( 'gform_field_standard_settings', array( $this, 'gform_field_standard_settings' ), 10, 2 );
+
+			add_filter( 'gform_noconflict_scripts', array( $this, 'gform_noconflict_scripts' ) );
+			add_filter( 'gform_noconflict_styles', array( $this, 'gform_noconflict_styles' ) );
+
+			self::$actions_run = true;
+		}
 	}
 
 	/**
 	 * Get the title for the field type.
 	 */
 	public function get_form_editor_field_title() {
-		return esc_attr__( 'GPS Trace', 'partial_station' );
+		return esc_attr__( 'GPS Vulture', 'gps-vulture' );
 	}
 
 	/**
@@ -44,7 +79,7 @@ class Partial_Station_GPS_Trace extends GF_Field {
 	public function get_form_editor_button() {
 		return array(
 			'group' => 'advanced_fields',
-			'text' => esc_html__( 'GPS Trace', 'gravityforms' ),
+			'text' => esc_html__( 'GPS Vulture', 'gravityforms' ),
 		);
 	}
 
@@ -63,7 +98,7 @@ class Partial_Station_GPS_Trace extends GF_Field {
 			'rules_setting',
 			'default_value_setting',
 			'css_class_setting',
-			// 'geocoding_setting',
+			'gps_vulture_settings',
 			'visibility_setting',
 			'description_setting',
 		);
@@ -134,20 +169,39 @@ class Partial_Station_GPS_Trace extends GF_Field {
 		if ( $show_map || $is_form_editor || $is_entry_detail ) {
 			$leaflet = new LeafletPHP( array(), "geocode_map_$field_id" );
 
-			if ( !$is_form_editor ) {
-				$leaflet->add_layer( 'L.geoJSON', array( $geojson ), 'editthis' );
-				$leaflet->add_control('L.Control.Draw',array(
-					'draw' => array(
-						'polyline' => false,
-						'polygon' => false,
-						'circle' => false,
-						'rectangle' => false,
-					),
-					'edit' => array(
-						'featureGroup' => '@@@editthis@@@',
-					),
-				),'drawControl');
+			$leaflet->add_layer( 'L.geoJSON', array( $geojson ), 'editthis' );
+
+
+			$settings = $this->get_settings( $form );
+
+			$args = array(
+				'draw' => array(
+					'gpsline' => array(
+						'minDistance' => $settings['gps_vulture_minDistance'],
+						'minAccuracy' => $settings['gps_vulture_minAccuracy'],
+						),
+				),
+				'edit' => array(
+					'featureGroup' => '@@@editthis@@@',
+				),
+			);
+
+			$shapes = array(
+				'polyline' => $settings['gps_vulture_polyline'],
+				'rectangle' => $settings['gps_vulture_rectangle'],
+				'polygon' => $settings['gps_vulture_polygon'],
+				'circle' => $settings['gps_vulture_circle'],
+				'marker' => $settings['gps_vulture_marker'],
+				'circlemarker' => $settings['gps_vulture_circlemarker'],
+			);
+			
+			foreach( $shapes as $shape => $checked ) {
+				if ( $checked !== 'checked' ) {
+					$args['draw'][$shape] = false;
+				}
 			}
+
+			$leaflet->add_control('L.Control.Draw',$args,'drawControl');
 
 			if ( $is_entry_detail ) {
 				$leaflet->add_script( $this->get_form_inline_script_on_page_render( $form, false ) );
@@ -243,4 +297,90 @@ class Partial_Station_GPS_Trace extends GF_Field {
 	public function validate( $value, $form ) {
 		return WP_GeoUtil::is_geojson( $value );
 	}
+
+
+	/**
+	 * Get the standard settings.
+	 *
+	 * @param int $position Where should it appear on the page.
+	 * @param int $form_id Which form is it for.
+	 */
+	public function gform_field_standard_settings( $position, $form_id ) {
+
+		if ( 50 === $position ) {
+
+			print '<li class="gps_vulture_settings field_setting">';
+			print '<p>Note: On mobile devices the <em>rectangle</em>, <em>circle</em> and <em>circlemarker</em> inputs will be hidden.</p>';
+			print '<label class="section_label">Map Input Settings</label>';
+			print '<label><input type="checkbox" name="gps_vulture_gpsline" value="checked" ' . self::$vulture_defaults['gps_vulture_gpsline'] . '> GPS Trace Tool</label>';
+			print '<label style="margin-left: 25px;">Min. distance between GPS trace points <input type="text" name="gps_vulture_minDistance" value="' . esc_attr( self::$vulture_defaults['gps_vulture_minDistance'] ) . '"></label>';
+			print '<label style="margin-left: 25px;">Min. accuracy (in meters. smaller = more accurate) <input type="text" name="gps_vulture_minAccuracy" value="' . esc_attr( self::$vulture_defaults['gps_vulture_minAccuracy'] ) . '"></label>';
+			print '<label><input type="checkbox" name="gps_vulture_polyline" value="checked" ' . self::$vulture_defaults['gps_vulture_polyline'] . '> Polyline tool</label>';
+			print '<label><input type="checkbox" name="gps_vulture_rectangle" value="checked" ' . self::$vulture_defaults['gps_vulture_rectangle'] . '> Rectangle tool</label>';
+			print '<label><input type="checkbox" name="gps_vulture_polygon" value="checked" ' . self::$vulture_defaults['gps_vulture_polygon'] . '> Polygon tool</label>';
+			print '<label><input type="checkbox" name="gps_vulture_circle" value="checked" ' . self::$vulture_defaults['gps_vulture_circle'] . '> Circle tool</label>';
+			print '<label><input type="checkbox" name="gps_vulture_circlemarker" value="checked" ' . self::$vulture_defaults['gps_vulture_circlemarker'] . '> Circle Marker tool</label>';
+			print "<script>
+				jQuery(document).bind('gform_load_field_settings')
+			</script>";
+			print '</li>';
+		}
+	}
+
+	/**
+	 * Get a list of geocoders.
+	 */
+	public function get_form_editor_inline_script_on_page_render() {
+		$some_js = parent::get_form_editor_inline_script_on_page_render();
+
+		$some_js .= "
+				jQuery('li.gps_vulture_settings input[type=checkbox]').on('change',function(e){ 
+					SetFieldProperty(e.target.name,e.target.checked ? e.target.value : '' );
+				});
+				jQuery('li.gps_vulture_settings input[type=text]').on('change',function(e){ 
+					SetFieldProperty(e.target.name,e.target.value);
+				});";
+
+		$some_js .= "\njQuery(document).bind('gform_load_field_settings', function(event,field,form){\n";
+
+		$text_inputs = array('gps_vulture_minDistance','gps_vulture_minAccuracy');
+
+		$checkbox_inputs = array(
+			"gps_vulture_gpsline",
+			"gps_vulture_polyline",
+			"gps_vulture_rectangle",
+			"gps_vulture_polygon",
+			"gps_vulture_circle",
+			"gps_vulture_circlemarker",
+		);
+
+		foreach( $text_inputs as $field_name ) {
+			$some_js .= "jQuery('input[name=\"$field_name\"]').val((field.$field_name === undefined ? '" . self::$vulture_defaults[$field_name] . "' : field.$field_name ));\n";
+		}
+
+		foreach( $checkbox_inputs as $field_name ) {
+			$some_js .= "jQuery('input[name=\"$field_name\"').prop('checked',(field.$field_name === undefined ? '" . self::$vulture_defaults[$field_name] . "' === 'checked' : field.$field_name === 'checked'));\n";
+		}
+		$some_js .= "});";
+		return $some_js;
+	}
+
+	public function get_settings( $form = array() ) {
+		return wp_parse_args( $form, self::$vulture_defaults );
+	}
+
+	function gform_noconflict_scripts( $required_scripts ) {
+		$required_scripts[] = 'form_admin_geocode';
+		$required_scripts[] = 'gfg_geocode';
+		$required_scripts[] = 'leafletphp-leaflet-js';
+		return $required_scripts;
+	}
+
+	function gform_noconflict_styles( $required_styles ) {
+		$required_styles[] = 'form_admin_geocode';
+		$required_styles[] = 'leafletphp-css';
+		$required_styles[] = 'leafletphp-leaflet-css';
+		return $required_styles;
+	}
+
 }
