@@ -171,8 +171,7 @@ class GPS_Vulture extends GF_Field {
 
 			$leaflet->add_layer( 'L.geoJSON', array( $geojson ), 'editthis' );
 
-
-			$settings = $this->get_settings( $form );
+			$settings = $this->get_settings( $this );
 
 			$args = array(
 				'draw' => array(
@@ -308,7 +307,6 @@ class GPS_Vulture extends GF_Field {
 	public function gform_field_standard_settings( $position, $form_id ) {
 
 		if ( 50 === $position ) {
-
 			print '<li class="gps_vulture_settings field_setting">';
 			print '<p>Note: On mobile devices the <em>rectangle</em>, <em>circle</em> and <em>circlemarker</em> inputs will be hidden.</p>';
 			print '<label class="section_label">Map Input Settings</label>';
@@ -320,9 +318,6 @@ class GPS_Vulture extends GF_Field {
 			print '<label><input type="checkbox" name="gps_vulture_polygon" value="checked" ' . self::$vulture_defaults['gps_vulture_polygon'] . '> Polygon tool</label>';
 			print '<label><input type="checkbox" name="gps_vulture_circle" value="checked" ' . self::$vulture_defaults['gps_vulture_circle'] . '> Circle tool</label>';
 			print '<label><input type="checkbox" name="gps_vulture_circlemarker" value="checked" ' . self::$vulture_defaults['gps_vulture_circlemarker'] . '> Circle Marker tool</label>';
-			print "<script>
-				jQuery(document).bind('gform_load_field_settings')
-			</script>";
 			print '</li>';
 		}
 	}
@@ -339,9 +334,9 @@ class GPS_Vulture extends GF_Field {
 				});
 				jQuery('li.gps_vulture_settings input[type=text]').on('change',function(e){ 
 					SetFieldProperty(e.target.name,e.target.value);
-				});";
+				});\n";
 
-		$some_js .= "\njQuery(document).bind('gform_load_field_settings', function(event,field,form){\n";
+		$some_js .= "jQuery(document).bind('gform_load_field_settings', function(event,field,form){\n";
 
 		$text_inputs = array('gps_vulture_minDistance','gps_vulture_minAccuracy');
 
