@@ -1,0 +1,15 @@
+div.gform_wrapper form div.leafletphpwrap li {
+	margin: 0;
+}
+
+.entry-content div.leafletphpwrap  ul {
+	margin: 0;
+}
+
+#gform_fields li div.leafletphpwrap ul li {
+	padding-top: 0;
+}
+
+.entry-content li div.leafletphpwrap ul li a {
+	box-shadow: none;
+}

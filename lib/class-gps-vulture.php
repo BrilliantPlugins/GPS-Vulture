@@ -58,12 +58,21 @@ class GPS_Vulture extends GF_Field {
 
 		if ( !self::$actions_run ) {
 			add_action( 'gform_field_standard_settings', array( $this, 'gform_field_standard_settings' ), 10, 2 );
+			add_action( 'wp_enqueue_scripts', array( $this, 'wp_enqueue_scripts' ) );
 
 			add_filter( 'gform_noconflict_scripts', array( $this, 'gform_noconflict_scripts' ) );
 			add_filter( 'gform_noconflict_styles', array( $this, 'gform_noconflict_styles' ) );
 
 			self::$actions_run = true;
 		}
+	}
+
+	/**
+	 * Load styles and scripts.
+	 */
+	function wp_enqueue_scripts() {
+		$url = plugin_dir_url( __FILE__ );
+		wp_enqueue_style( 'gps-vulture', $url . 'gps-vulture.css', array(), GPS_VULTURE_VERSION );
 	}
 
 	/**
@@ -202,6 +211,14 @@ class GPS_Vulture extends GF_Field {
 
 			$leaflet->add_control('L.Control.Draw',$args,'drawControl');
 
+			$leaflet->add_script('
+				map.on(L.Draw.Event.CREATED, function (e) {
+					var type = e.layerType,
+						layer = e.layer;
+					editthis.addLayer(layer);
+				});
+			');
+
 			if ( $is_entry_detail ) {
 				$leaflet->add_script( $this->get_form_inline_script_on_page_render( $form, false ) );
 			}
@@ -278,7 +295,7 @@ class GPS_Vulture extends GF_Field {
 			}
 		}
 
-		$input .= "\n" . '<script>jQuery(document).ready(function(){new gfg_sync_data("' . $field_id . '");});</script>';
+		// $input .= "\n" . '<script>jQuery(document).ready(function(){new gfg_sync_data("' . $field_id . '");});</script>';
 
 		if ( $show_something ) {
 			$input .= '</div>';
