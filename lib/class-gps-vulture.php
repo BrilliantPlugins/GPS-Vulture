@@ -176,7 +176,7 @@ class GPS_Vulture extends GF_Field {
 		 * Display the map, with a Leaflet.draw editor
 		 */
 		if ( $show_map || $is_form_editor || $is_entry_detail ) {
-			$leaflet = new LeafletPHP( array(), "geocode_map_$field_id" );
+			$leaflet = new LeafletPHP( array(), "map_{$form_id}_{$field_id}" );
 
 			$leaflet->add_layer( 'L.geoJSON', array( $geojson ), 'editthis' );
 
